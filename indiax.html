@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lucky Star CX – Question Logger</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f9fafb;
+    color: #333;
+    margin: 0;
+    padding: 0;
+  }
+  header {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    padding: 16px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    color: #2d3748;
+  }
+  main {
+    max-width: 800px;
+    margin: 20px auto;
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  }
+  label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 10px;
+    display: block;
+    color: #4a5568;
+  }
+  input, textarea, select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 4px;
+    border: 1px solid #cbd5e0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fefefe;
+    box-sizing: border-box;
+  }
+  textarea {
+    resize: vertical;
+  }
+  button {
+    margin-top: 16px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    background: #3182ce;
+    color: white;
+    transition: background 0.2s ease;
+  }
+  button:hover {
+    background: #2b6cb0;
+  }
+  .list {
+    margin-top: 20px;
+  }
+  .item {
+    padding: 12px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .item strong {
+    display: block;
+    font-size: 15px;
+    color: #1a202c;
+  }
+  .item small {
+    display: block;
+    color: #718096;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<header>Lucky Star CX – Question Logger</header>
+
+<main>
+  <form id="qForm">
+    <label>Question *</label>
+    <input type="text" id="question" required placeholder="Enter customer question...">
+
+    <label>Answer</label>
+    <input type="text" id="answer" placeholder="Short answer...">
+
+    <label>Category</label>
+    <input type="text" id="category" placeholder="e.g. Withdrawal, Bonus">
+
+    <label>Priority</label>
+    <select id="priority">
+      <option>Medium</option>
+      <option>High</option>
+      <option>Low</option>
+    </select>
+
+    <label>Language</label>
+    <select id="lang">
+      <option>English</option>
+      <option>Hinglish</option>
+      <option>Hindi</option>
+    </select>
+
+    <label>Tag</label>
+    <input type="text" id="tag" placeholder="#voucher, #otp">
+
+    <label>Notes</label>
+    <textarea id="notes" placeholder="Extra details..."></textarea>
+
+    <button type="submit">Add to Google Sheet</button>
+  </form>
+
+  <div class="list" id="list"></div>
+</main>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw6dkf6k6SkhmSYCg6MZKl4qYo1skC9AkG_R9GtucD0H7FjlOmT0qM4QBAQ8QU-i8NcTA/exec";
+const STORAGE_KEY = "ls_cx_questions";
+
+const listEl = document.getElementById('list');
+let items = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+
+function renderList() {
+  listEl.innerHTML = items.length ? 
+    items.map(i => `
+      <div class="item">
+        <strong>${i.question}</strong>
+        <small>${i.answer || ''} | ${i.category || 'General'} | ${i.priority} | ${i.lang} ${i.tag ? ' | ' + i.tag : ''}</small>
+      </div>
+    `).join('') 
+    : "<p style='color:#718096'>No questions logged yet.</p>";
+}
+
+document.getElementById('qForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const data = {
+    question: document.getElementById('question').value.trim(),
+    answer: document.getElementById('answer').value.trim(),
+    category: document.getElementById('category').value.trim(),
+    priority: document.getElementById('priority').value,
+    lang: document.getElementById('lang').value,
+    tag: document.getElementById('tag').value.trim(),
+    notes: document.getElementById('notes').value.trim(),
+    timestamp: Date.now(),
+    source: 'soft-ui-light'
+  };
+
+  if (!data.question) {
+    alert("Question is required");
+    return;
+  }
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (result.ok) {
+      items.unshift(data);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      renderList();
+      e.target.reset();
+      alert("Saved to Google Sheet!");
+    } else {
+      throw new Error(result.error || "Unknown error");
+    }
+  } catch (err) {
+    alert("Failed to save: " + err.message);
+  }
+});
+
+renderList();
+</script>
+
+</body>
+</html>
